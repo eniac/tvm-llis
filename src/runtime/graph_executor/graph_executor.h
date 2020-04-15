@@ -30,6 +30,7 @@
 #include <dmlc/memory_io.h>
 #include <tvm/runtime/ndarray.h>
 #include <tvm/runtime/packed_func.h>
+#include <tvm/runtime/device_api.h>
 
 #include <memory>
 #include <string>
@@ -88,6 +89,8 @@ class TVM_DLL GraphExecutor : public ModuleNode {
    */
   const char* type_key() const final { return "GraphExecutor"; }
   void Run();
+
+  std::vector<std::vector<WorkspaceAlloc>>* ProfileWorkspaceAllocs();
 
   /*!
    * \brief Initialize the graph executor with graph and device.

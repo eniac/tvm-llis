@@ -104,7 +104,7 @@ class TVM_DLL DeviceAPI {
    * \return The allocated device pointer.
    */
   virtual void* AllocDataSpace(Device dev, size_t nbytes, size_t alignment,
-                               DLDataType type_hint) = 0;
+                               DLDataType type_hint, bool workspace = false) = 0;
   /*!
    * \brief Allocate a data space on device with memory scope support.
    * \param dev The device device to perform operation.
@@ -121,7 +121,7 @@ class TVM_DLL DeviceAPI {
    * \param dev The device device to perform operation.
    * \param ptr The data space.
    */
-  virtual void FreeDataSpace(Device dev, void* ptr) = 0;
+  virtual void FreeDataSpace(Device dev, void* ptr, bool workspace = false) = 0;
   /*!
    * \brief copy data from one place to another
    * \note This API is designed to support special memory with shape dependent layout.
@@ -230,6 +230,12 @@ class TVM_DLL DeviceAPI {
   virtual void CopyDataFromTo(const void* from, size_t from_offset, void* to, size_t to_offset,
                               size_t num_bytes, Device dev_from, Device dev_to,
                               DLDataType type_hint, TVMStreamHandle stream);
+};
+
+struct WorkspaceAlloc {
+  bool isalloc;
+  size_t size;
+  void* ptr;
 };
 
 /*! \brief The device type bigger than this is RPC device */

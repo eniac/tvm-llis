@@ -174,6 +174,10 @@ class NDArray : public ObjectRef {
    * \return The created NDArray view.
    */
   TVM_DLL static NDArray NewFromDLTensor(DLTensor* dl_tensor, const Device& dev);
+
+  TVM_DLL void* dataptr();
+  TVM_DLL uint64_t Size();
+
   /*!
    * \brief Create a NDArray backed by a dlpack tensor.
    *

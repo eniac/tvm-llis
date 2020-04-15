@@ -1076,7 +1076,7 @@ class RPCClientSession : public RPCSession, public DeviceAPI {
     }
   }
 
-  void* AllocDataSpace(Device dev, size_t nbytes, size_t alignment, DLDataType type_hint) final {
+  void* AllocDataSpace(Device dev, size_t nbytes, size_t alignment, DLDataType type_hint, bool workspace = false) final {
     return endpoint_->SysCallRemote(RPCCode::kDevAllocData, dev, nbytes, alignment, type_hint);
   }
 
@@ -1098,7 +1098,7 @@ class RPCClientSession : public RPCSession, public DeviceAPI {
     }
   }
 
-  void FreeDataSpace(Device dev, void* ptr) final {
+  void FreeDataSpace(Device dev, void* ptr, bool workspace = false) final {
     endpoint_->SysCallRemote(RPCCode::kDevFreeData, dev, ptr);
   }
 

@@ -57,12 +57,12 @@ class WorkspacePool::Pool {
       free_list_.pop_back();
       if (e.size < nbytes) {
         // resize the page
-        device->FreeDataSpace(dev, e.data);
-        e.data = device->AllocDataSpace(dev, nbytes, kTempAllocaAlignment, type);
+        device->FreeDataSpace(dev, e.data, true);
+        e.data = device->AllocDataSpace(dev, nbytes, kTempAllocaAlignment, type, true);
         e.size = nbytes;
       }
     } else if (free_list_.size() == 1) {
-      e.data = device->AllocDataSpace(dev, nbytes, kTempAllocaAlignment, type);
+      e.data = device->AllocDataSpace(dev, nbytes, kTempAllocaAlignment, type, true);
       e.size = nbytes;
     } else {
       if (free_list_.back().size >= nbytes) {
@@ -76,8 +76,8 @@ class WorkspacePool::Pool {
         // resize the page
         e = free_list_.back();
         free_list_.pop_back();
-        device->FreeDataSpace(dev, e.data);
-        e.data = device->AllocDataSpace(dev, nbytes, kTempAllocaAlignment, type);
+        device->FreeDataSpace(dev, e.data, true);
+        e.data = device->AllocDataSpace(dev, nbytes, kTempAllocaAlignment, type, true);
         e.size = nbytes;
       }
     }

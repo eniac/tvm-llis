@@ -55,22 +55,23 @@ class RPCDeviceAPI final : public DeviceAPI {
     return space;
   }
 
-  void* AllocDataSpace(Device dev, size_t nbytes, size_t alignment, DLDataType type_hint) final {
+  void* AllocDataSpace(Device dev, size_t nbytes, size_t alignment, DLDataType type_hint,
+                       bool workspace = false) final {
     auto sess = GetSess(dev);
     auto remote_dev = RemoveRPCSessionMask(dev);
     void* data =
-        sess->GetDeviceAPI(remote_dev)->AllocDataSpace(remote_dev, nbytes, alignment, type_hint);
+        sess->GetDeviceAPI(remote_dev)->AllocDataSpace(remote_dev, nbytes, alignment, type_hint, workspace);
 
     RemoteSpace* space = new RemoteSpace();
     space->data = data;
     space->sess = std::move(sess);
     return space;
   }
-  void FreeDataSpace(Device dev, void* ptr) final {
+  void FreeDataSpace(Device dev, void* ptr, bool workspace = false) final {
     RemoteSpace* space = static_cast<RemoteSpace*>(ptr);
     auto remote_dev = RemoveRPCSessionMask(dev);
     try {
-      GetSess(dev)->GetDeviceAPI(remote_dev)->FreeDataSpace(remote_dev, space->data);
+      GetSess(dev)->GetDeviceAPI(remote_dev)->FreeDataSpace(remote_dev, space->data, workspace);
     } catch (const Error& e) {
       // fault tolerance to remote close.
     }

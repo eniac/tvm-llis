@@ -65,6 +65,24 @@ void GraphExecutor::Run() {
   }
 }
 
+std::vector<std::vector<WorkspaceAlloc>>* GraphExecutor::ProfileWorkspaceAllocs() {
+  std::vector<std::vector<WorkspaceAlloc>>* allocs = new std::vector<std::vector<WorkspaceAlloc>>(op_execs_.size());
+
+  tvm::runtime::PackedFunc enable_profiling(*tvm::runtime::Registry::Get("enable_workspace_alloc_profiling"));
+  tvm::runtime::PackedFunc disable_profiling(*tvm::runtime::Registry::Get("enable_workspace_alloc_profiling"));
+  tvm::runtime::PackedFunc get_allocs(*tvm::runtime::Registry::Get("get_gpu_workspace_allocs"));
+  tvm::runtime::PackedFunc clear_allocs(*tvm::runtime::Registry::Get("clear_gpu_workspace_allocs"));
+
+  for (size_t i = 0; i < op_execs_.size(); ++i) {
+    enable_profiling();
+    if (op_execs_[i]) op_execs_[i]();
+    (*allocs)[i] = *(static_cast<std::vector<WorkspaceAlloc>*>((void*) get_allocs()));
+    clear_allocs();
+    disable_profiling();
+  }
+  return allocs;
+}
+
 /*!
  * \brief Initialize the graph executor with graph and device.
  * \param graph_json The execution graph.
@@ -682,6 +700,10 @@ PackedFunc GraphExecutor::GetFunction(const std::string& name,
       input_info.Set("dtype", dtype_info);
       *rv = input_info;
     });
+  } else if (name == "profile_workspace_allocs") {
+    return PackedFunc([sptr_to_self, this](TVMArgs args, TVMRetValue* rv) {
+        *rv = this->ProfileWorkspaceAllocs();
+      });
   } else {
     return PackedFunc();
   }
