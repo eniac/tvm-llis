@@ -36,6 +36,7 @@
 #include "../../runtime/cuda-kelvin/cuda_kelvin_module.h"
 #include "../build_common.h"
 #include "../source/codegen_cuda.h"
+#include "../source/codegen_cuda_kelvin.h"
 
 namespace tvm {
 namespace codegen {
@@ -158,7 +159,7 @@ runtime::Module BuildCUDA(IRModule mod, Target target) {
 runtime::Module BuildCUDAKelvin(IRModule mod, Target target) {
   using tvm::runtime::Registry;
   bool output_ssa = false;
-  CodeGenCUDA cg;
+  CodeGenCUDAKelvin cg;
   cg.Init(output_ssa);
 
   for (auto kv : mod->functions) {
