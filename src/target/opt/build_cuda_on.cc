@@ -36,6 +36,7 @@
 #include "../../runtime/cuda-llis/cuda_llis_module.h"
 #include "../build_common.h"
 #include "../source/codegen_cuda.h"
+#include "../source/codegen_cuda_llis.h"
 
 namespace tvm {
 namespace codegen {
@@ -158,7 +159,7 @@ runtime::Module BuildCUDA(IRModule mod, Target target) {
 runtime::Module BuildCUDALlis(IRModule mod, Target target) {
   using tvm::runtime::Registry;
   bool output_ssa = false;
-  CodeGenCUDA cg;
+  CodeGenCUDALlis cg;
   cg.Init(output_ssa);
 
   for (auto kv : mod->functions) {
