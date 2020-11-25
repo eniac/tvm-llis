@@ -124,6 +124,8 @@ bool RuntimeEnabled(const std::string& target) {
     return true;
   } else if (target == "cuda" || target == "gpu") {
     f_name = "device_api.gpu";
+  } else if (target == "cuda_kelvin" || target == "gpu_kelvin") {
+    f_name = "device_api.gpu";
   } else if (target == "cl" || target == "opencl" || target == "sdaccel") {
     f_name = "device_api.opencl";
   } else if (target == "mtl" || target == "metal") {

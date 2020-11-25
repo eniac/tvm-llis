@@ -29,7 +29,7 @@ if(USE_CUDA)
     message(FATAL_ERROR "Cannot find CUDA, USE_CUDA=" ${USE_CUDA})
   endif()
   message(STATUS "Build with CUDA support")
-  file(GLOB RUNTIME_CUDA_SRCS src/runtime/cuda/*.cc)
+  file(GLOB RUNTIME_CUDA_SRCS src/runtime/cuda/*.cc src/runtime/cuda-kelvin/*.cc)
   list(APPEND RUNTIME_SRCS ${RUNTIME_CUDA_SRCS})
   list(APPEND COMPILER_SRCS src/target/opt/build_cuda_on.cc)
 

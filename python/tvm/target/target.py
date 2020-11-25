@@ -176,6 +176,20 @@ def cuda(model="unknown", options=None):
     return Target(" ".join(["cuda"] + opts))
 
 
+def cuda_kelvin(model="unknown", options=None):
+    """Returns a cuda target.
+
+    Parameters
+    ----------
+    model: str
+        The model of cuda_kelvin device (e.g. 1080ti)
+    options : str or list of str
+        Additional options
+    """
+    opts = _merge_opts(["-model=%s" % model], options)
+    return Target(" ".join(["cuda_kelvin"] + opts))
+
+
 def rocm(model="unknown", options=None):
     """Returns a ROCM target.
 
