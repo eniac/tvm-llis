@@ -73,17 +73,32 @@ void CodeGenCUDAKelvin::AddFunction(const PrimFunc& f) {
     }
     stream << ' ' << vid;
   }
+
+  this->PrintExtraParams();
+
   stream << ") {\n";
 
   this->PreFunctionBody(f);
   int func_scope = this->BeginScope();
-  stream << "printf(\"Start of kernel\\n\");\n";
   this->PrintStmt(f->body);
-  stream << "printf(\"End of kernel\\n\");\n";
   this->PrintFinalReturn();
   this->EndScope(func_scope);
   this->PrintIndent();
   this->stream << "}\n\n";
+}
+
+void CodeGenCUDAKelvin::PrintExtraParams() {
+  stream << ", volatile unsigned* __cuda_kelvin_flag";
+}
+
+void CodeGenCUDAKelvin::PrintFinalReturn() {
+  stream << "__cuda_kelvin_exit: if (threadIdx.x == 0 & threadIdx.y == 0 & threadIdx.z == 0 & __cuda_kelvin_flag != nullptr) atomicAdd((unsigned*)__cuda_kelvin_flag, 1);\n";
+}
+
+std::string CodeGenCUDAKelvin::Finish() {
+  // TODO(Kelvin): Replace every return instruction to jump to __cuda_kelvin_exit
+  // I am not sure if this is necessary though. It looks like return is never generated...
+  return CodeGenCUDA::Finish();
 }
 
 }  // namespace codegen

@@ -39,6 +39,10 @@ namespace codegen {
 class CodeGenCUDAKelvin : public CodeGenCUDA {
  public:
   void AddFunction(const PrimFunc& f) override;
+  void PrintFinalReturn() override;  // NOLINT(*)
+  virtual void PrintExtraParams();
+  std::string Finish();
+
   using CodeGenC::PrintType;
 };
 

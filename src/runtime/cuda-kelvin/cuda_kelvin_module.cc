@@ -22,6 +22,7 @@
  */
 #include "cuda_kelvin_module.h"
 #include "../cuda/cuda_module.h"
+#include <tvm/runtime/cuda_kelvin_bench.h>
 
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -53,6 +54,11 @@ class CUDAKelvinModuleNode : public runtime::ModuleNode {
                           std::string cuda_source)
       : data_(data), fmt_(fmt), fmap_(fmap), cuda_source_(cuda_source) {
     std::fill(module_.begin(), module_.end(), nullptr);
+
+    CUDAKelvinBench* cuda_kelvin_bench = CUDAKelvinBench::get(10);
+    auto tmp = cuda_kelvin_bench->acquire();
+    flag_ = tmp.first;
+    stream_ = tmp.second;
   }
   // destructor
   ~CUDAKelvinModuleNode() {
@@ -65,6 +71,14 @@ class CUDAKelvinModuleNode : public runtime::ModuleNode {
   }
 
   const char* type_key() const final { return "cuda_kelvin"; }
+
+  volatile unsigned* get_flag() {
+      return flag_;
+  }
+
+  volatile CUstream get_stream() {
+      return stream_;
+  }
 
   PackedFunc GetFunction(const std::string& name, const ObjectPtr<Object>& sptr_to_self) final;
 
@@ -147,6 +161,10 @@ class CUDAKelvinModuleNode : public runtime::ModuleNode {
   std::array<CUmodule, kMaxNumGPUs> module_;
   // internal mutex when updating the module
   std::mutex mutex_;
+  // Notification flag
+  volatile unsigned* flag_;
+  // Stream
+  CUstream stream_;
 };
 
 // a wrapped function class to get packed func.
@@ -160,6 +178,7 @@ class CUDAKelvinWrappedFunc {
     func_name_ = func_name;
     std::fill(fcache_.begin(), fcache_.end(), nullptr);
     thread_axis_cfg_.Init(num_void_args, thread_axis_tags);
+    num_void_args_ = num_void_args;
   }
   // invoke the function with void arguments
   void operator()(TVMArgs args, TVMRetValue* rv, void** void_args) const {
@@ -168,13 +187,14 @@ class CUDAKelvinWrappedFunc {
     if (fcache_[device_id] == nullptr) {
       fcache_[device_id] = m_->GetFunc(device_id, func_name_);
     }
-    CUstream strm = static_cast<CUstream>(CUDAThreadEntry::ThreadLocal()->stream);
     ThreadWorkLoad wl = thread_axis_cfg_.Extract(args);
-    printf("Kelvin: Before cuLaunchKernel\n");
+    volatile unsigned* flag = m_->get_flag();
+    CUstream stream = m_->get_stream();
+    void_args[num_void_args_] = (void*)&flag;
+    //printf("Kelvin: Before cuLaunchKernel. Num blocks: %lu\n", wl.grid_dim(0) * wl.grid_dim(1) * wl.grid_dim(2));
     CUresult result = cuLaunchKernel(fcache_[device_id], wl.grid_dim(0), wl.grid_dim(1),
                                      wl.grid_dim(2), wl.block_dim(0), wl.block_dim(1),
-                                     wl.block_dim(2), 0, strm, void_args, nullptr);
-    printf("Kelvin: After cuLaunchKernel\n");
+                                     wl.block_dim(2), 0, stream, void_args, nullptr);
     if (result != CUDA_SUCCESS && result != CUDA_ERROR_DEINITIALIZED) {
       const char* msg;
       cuGetErrorName(result, &msg);
@@ -206,6 +226,8 @@ class CUDAKelvinWrappedFunc {
   mutable std::array<CUfunction, kMaxNumGPUs> fcache_;
   // thread axis configuration
   ThreadAxisConfig thread_axis_cfg_;
+  // num of args
+  int num_void_args_;
 };
 
 class CUDAKelvinPrepGlobalBarrier {
@@ -245,7 +267,7 @@ PackedFunc CUDAKelvinModuleNode::GetFunction(const std::string& name,
   const FunctionInfo& info = it->second;
   CUDAKelvinWrappedFunc f;
   f.Init(this, sptr_to_self, name, info.arg_types.size(), info.thread_axis_tags);
-  return PackFuncVoidAddr(f, info.arg_types);
+  return PackFuncVoidAddrExtraArgs(f, info.arg_types, 1);
 }
 
 Module CUDAKelvinModuleCreate(std::string data, std::string fmt,
