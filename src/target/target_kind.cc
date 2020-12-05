@@ -229,6 +229,14 @@ TVM_REGISTER_TARGET_KIND("cuda", kDLGPU)
     .add_attr_option<Integer>("thread_warp_size", Integer(32))
     .set_default_keys({"cuda", "gpu"});
 
+TVM_REGISTER_TARGET_KIND("cuda_llis", kDLGPU)
+    .add_attr_option<String>("mcpu")
+    .add_attr_option<String>("arch")
+    .add_attr_option<Bool>("system-lib")
+    .add_attr_option<Integer>("max_num_threads", Integer(1024))
+    .add_attr_option<Integer>("thread_warp_size", Integer(32))
+    .set_default_keys({"cuda", "gpu"});
+
 TVM_REGISTER_TARGET_KIND("nvptx", kDLGPU)
     .add_attr_option<String>("mcpu")
     .add_attr_option<String>("mtriple")

@@ -175,6 +175,7 @@ class TVMContext(ctypes.Structure):
         "c": 1,
         "gpu": 2,
         "cuda": 2,
+        "cuda_llis": 2,
         "nvptx": 2,
         "cl": 4,
         "opencl": 4,

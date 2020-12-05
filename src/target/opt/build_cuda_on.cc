@@ -33,6 +33,7 @@
 
 #include "../../runtime/cuda/cuda_common.h"
 #include "../../runtime/cuda/cuda_module.h"
+#include "../../runtime/cuda-llis/cuda_llis_module.h"
 #include "../build_common.h"
 #include "../source/codegen_cuda.h"
 
@@ -154,6 +155,40 @@ runtime::Module BuildCUDA(IRModule mod, Target target) {
   return CUDAModuleCreate(ptx, fmt, ExtractFuncInfo(mod), code);
 }
 
+runtime::Module BuildCUDALlis(IRModule mod, Target target) {
+  using tvm::runtime::Registry;
+  bool output_ssa = false;
+  CodeGenCUDA cg;
+  cg.Init(output_ssa);
+
+  for (auto kv : mod->functions) {
+    CHECK(kv.second->IsInstance<PrimFuncNode>()) << "CodeGenCUDALlis: Can only take PrimFunc";
+    auto f = Downcast<PrimFunc>(kv.second);
+    auto calling_conv = f->GetAttr<Integer>(tvm::attr::kCallingConv);
+    CHECK(calling_conv == CallingConv::kDeviceKernelLaunch)
+        << "CodeGenCUDALlis: expect calling_conv equals CallingConv::kDeviceKernelLaunch";
+    cg.AddFunction(f);
+  }
+
+  std::string code = cg.Finish();
+
+  if (const auto* f = Registry::Get("tvm_callback_cuda_postproc")) {
+    code = (*f)(code).operator std::string();
+  }
+  std::string fmt = "ptx_llis";
+  std::string ptx;
+  if (const auto* f = Registry::Get("tvm_callback_cuda_compile")) {
+    ptx = (*f)(code).operator std::string();
+    // Dirty matching to check PTX vs cubin.
+    // TODO(tqchen) more reliable checks
+    if (ptx[0] != '/') fmt = "cubin";
+  } else {
+    ptx = NVRTCCompile(code, cg.need_include_path());
+  }
+  return CUDALlisModuleCreate(ptx, fmt, ExtractFuncInfo(mod), code);
+}
+
 TVM_REGISTER_GLOBAL("target.build.cuda").set_body_typed(BuildCUDA);
+TVM_REGISTER_GLOBAL("target.build.cuda_llis").set_body_typed(BuildCUDALlis);
 }  // namespace codegen
 }  // namespace tvm

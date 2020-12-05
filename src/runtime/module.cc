@@ -122,7 +122,7 @@ bool RuntimeEnabled(const std::string& target) {
   std::string f_name;
   if (target == "cpu") {
     return true;
-  } else if (target == "cuda" || target == "gpu") {
+  } else if (target == "cuda" || target == "gpu" || target == "cuda_llis" || target == "gpu_llis") {
     f_name = "device_api.gpu";
   } else if (target == "cl" || target == "opencl" || target == "sdaccel") {
     f_name = "device_api.opencl";

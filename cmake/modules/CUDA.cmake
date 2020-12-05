@@ -38,6 +38,13 @@ if(USE_CUDA)
   list(APPEND TVM_RUNTIME_LINKER_LIBS ${CUDA_CUDA_LIBRARY})
   list(APPEND TVM_RUNTIME_LINKER_LIBS ${CUDA_NVRTC_LIBRARY})
 
+  if(USE_LLIS)
+    message(STATUS "Build with LLIS support")
+    file(GLOB RUNTIME_LLIS_SRCS src/runtime/cuda-llis/*.cc)
+    list(APPEND RUNTIME_SRCS ${RUNTIME_LLIS_SRCS})
+    include_directories(${USE_LLIS}/include)
+  endif(USE_LLIS)
+
   if(USE_CUDNN)
     message(STATUS "Build with cuDNN support")
     file(GLOB CONTRIB_CUDNN_SRCS src/runtime/contrib/cudnn/*.cc)
