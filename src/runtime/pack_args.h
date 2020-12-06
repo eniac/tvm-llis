@@ -174,6 +174,44 @@ inline PackedFunc PackFuncVoidAddr_(F f, const std::vector<ArgConvertCode>& code
 }
 
 template <int N, typename F>
+inline PackedFunc PackFuncVoidAddrExtraArgs_(F f, const std::vector<ArgConvertCode>& codes, int num_extra_args) {
+  int num_args = static_cast<int>(codes.size());
+  auto ret = [f, codes, num_args, num_extra_args](TVMArgs args, TVMRetValue* ret) {
+    TempArray<void*, N> addr_(num_args + num_extra_args);
+    TempArray<ArgUnion, N> holder_(num_args);
+    void** addr = addr_.data();
+    ArgUnion* holder = holder_.data();
+    for (int i = 0; i < num_args; ++i) {
+      switch (codes[i]) {
+        case INT64_TO_INT64:
+        case FLOAT64_TO_FLOAT64:
+        case HANDLE_TO_HANDLE: {
+          addr[i] = (void*)&(args.values[i]);  // NOLINT(*)
+          break;
+        }
+        case INT64_TO_INT32: {
+          holder[i].v_int32 = static_cast<int32_t>(args.values[i].v_int64);
+          addr[i] = &(holder[i]);
+          break;
+        }
+        case INT64_TO_UINT32: {
+          holder[i].v_uint32 = static_cast<uint32_t>(args.values[i].v_int64);
+          addr[i] = &(holder[i]);
+          break;
+        }
+        case FLOAT64_TO_FLOAT32: {
+          holder[i].v_float32 = static_cast<float>(args.values[i].v_float64);
+          addr[i] = &(holder[i]);
+          break;
+        }
+      }
+    }
+    f(args, ret, addr);
+  };
+  return PackedFunc(ret);
+}
+
+template <int N, typename F>
 inline PackedFunc PackFuncNonBufferArg_(F f, int base, const std::vector<ArgConvertCode>& codes) {
   int num_args = static_cast<int>(codes.size());
   auto ret = [f, codes, base, num_args](TVMArgs args, TVMRetValue* ret) {
@@ -272,6 +310,23 @@ inline PackedFunc PackFuncVoidAddr(F f, const std::vector<DLDataType>& arg_types
     return detail::PackFuncVoidAddr_<8>(f, codes);
   } else {
     return detail::PackFuncVoidAddr_<0>(f, codes);
+  }
+}
+
+template <typename F>
+inline PackedFunc PackFuncVoidAddrExtraArgs(F f, const std::vector<DLDataType>& arg_types, int num_extra_args) {
+  std::vector<detail::ArgConvertCode> codes(arg_types.size());
+  for (size_t i = 0; i < arg_types.size(); ++i) {
+    codes[i] = detail::GetArgConvertCode(arg_types[i]);
+  }
+  size_t num_void_args = arg_types.size() + num_extra_args;
+  // specialization
+  if (num_void_args <= 4) {
+    return detail::PackFuncVoidAddrExtraArgs_<4>(f, codes, num_extra_args);
+  } else if (num_void_args <= 8) {
+    return detail::PackFuncVoidAddrExtraArgs_<8>(f, codes, num_extra_args);
+  } else {
+    return detail::PackFuncVoidAddrExtraArgs_<0>(f, codes, num_extra_args);
   }
 }
 

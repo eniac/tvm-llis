@@ -43,6 +43,7 @@ if(USE_CUDA)
     file(GLOB RUNTIME_LLIS_SRCS src/runtime/cuda-llis/*.cc)
     list(APPEND RUNTIME_SRCS ${RUNTIME_LLIS_SRCS})
     include_directories(${USE_LLIS}/include)
+    link_directories(${USE_LLIS}/lib)
   endif(USE_LLIS)
 
   if(USE_CUDNN)

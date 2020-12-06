@@ -711,7 +711,7 @@ def check_remote(target, device_key, host=None, port=None, priority=100, timeout
 
 
 @tvm._ffi.register_func
-def tvm_callback_cuda_compile(code):
+def tvm_callback_cuda_compile(code, options=None):
     """use nvcc to generate ptx code for better optimization"""
     curr_cuda_target_arch = AutotvmGlobalScope.current.cuda_target_arch
     # e.g., target arch could be [
@@ -719,7 +719,7 @@ def tvm_callback_cuda_compile(code):
     #   "-gencode", "arch=compute_70,code=sm_70"
     # ]
     target = "fatbin" if isinstance(curr_cuda_target_arch, list) else "ptx"
-    ptx = nvcc.compile_cuda(code, target=target, arch=AutotvmGlobalScope.current.cuda_target_arch)
+    ptx = nvcc.compile_cuda(code, target=target, arch=AutotvmGlobalScope.current.cuda_target_arch, options=options)
     return ptx
 
 

@@ -73,15 +73,40 @@ void CodeGenCUDALlis::AddFunction(const PrimFunc& f) {
     }
     stream << ' ' << vid;
   }
+
+  this->PrintExtraParams();
+
   stream << ") {\n";
 
   this->PreFunctionBody(f);
   int func_scope = this->BeginScope();
+  this->PrintFuncStart();
   this->PrintStmt(f->body);
   this->PrintFinalReturn();
   this->EndScope(func_scope);
   this->PrintIndent();
   this->stream << "}\n\n";
+}
+
+void CodeGenCUDALlis::PrintExtraParams() {
+  stream << ", llis::JobId __cuda_llis_job_id, llis::ipc::Gpu2SchedChannel __cuda_llis_gpu2sched_channel";
+}
+
+void CodeGenCUDALlis::PrintFinalReturn() {
+  stream << "__cuda_llis_exit: llis::job::kernel_end(__cuda_llis_job_id, &__cuda_llis_gpu2sched_channel);\n";
+}
+
+void CodeGenCUDALlis::PrintFuncStart() {
+  stream << "llis::job::kernel_start(__cuda_llis_job_id, &__cuda_llis_gpu2sched_channel);\n";
+}
+
+std::string CodeGenCUDALlis::Finish() {
+  // TODO(Kelvin): Replace every return instruction to jump to __cuda_llis_exit
+  // I am not sure if this is necessary though. It looks like return is never generated...
+
+  decl_stream << "#include <llis/job/instrument.h>\n";
+
+  return CodeGenCUDA::Finish();
 }
 
 }  // namespace codegen

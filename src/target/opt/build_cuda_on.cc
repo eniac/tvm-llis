@@ -76,6 +76,23 @@ std::string FindCUDAIncludePath() {
   return cuda_include_path;
 }
 
+std::string FindLLISIncludePath() {
+#if defined(_WIN32)
+  const std::string delimiter = "\\";
+#else
+  const std::string delimiter = "/";
+#endif
+  std::string llis_include_path;
+  const char* llis_path_env = std::getenv("LLIS_PATH");
+  if (llis_path_env != nullptr) {
+    llis_include_path += llis_path_env;
+    llis_include_path += delimiter + "include";
+    return llis_include_path;
+  } else {
+    return "";
+  }
+}
+
 std::string NVRTCCompile(const std::string& code, bool include_path = false) {
   std::vector<std::string> compile_params;
   std::vector<const char*> param_cstrings{};
@@ -96,6 +113,13 @@ std::string NVRTCCompile(const std::string& code, bool include_path = false) {
 
   if (include_path) {
     std::string include_option = "--include-path=" + FindCUDAIncludePath();
+
+    compile_params.push_back(include_option);
+  }
+
+  std::string llis_include_path = FindLLISIncludePath();
+  if (llis_include_path != "") {
+    std::string include_option = "--include-path=" + llis_include_path;
 
     compile_params.push_back(include_option);
   }
@@ -179,7 +203,13 @@ runtime::Module BuildCUDALlis(IRModule mod, Target target) {
   std::string fmt = "ptx_llis";
   std::string ptx;
   if (const auto* f = Registry::Get("tvm_callback_cuda_compile")) {
-    ptx = (*f)(code).operator std::string();
+    std::string llis_include_path = FindLLISIncludePath();
+    if (llis_include_path != "") {
+      std::string include_option = "--include-path=" + llis_include_path;
+      ptx = (*f)(code, include_option).operator std::string();
+    } else {
+      ptx = (*f)(code).operator std::string();
+    }
     // Dirty matching to check PTX vs cubin.
     // TODO(tqchen) more reliable checks
     if (ptx[0] != '/') fmt = "cubin";

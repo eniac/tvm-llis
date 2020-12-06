@@ -39,6 +39,11 @@ namespace codegen {
 class CodeGenCUDALlis : public CodeGenCUDA {
  public:
   void AddFunction(const PrimFunc& f) override;
+  void PrintFinalReturn() override;  // NOLINT(*)
+  virtual void PrintExtraParams();
+  virtual void PrintFuncStart();
+  std::string Finish();
+
   using CodeGenC::PrintType;
 };
 

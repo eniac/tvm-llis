@@ -23,6 +23,9 @@
 #include "cuda_llis_module.h"
 #include "../cuda/cuda_module.h"
 
+#include <llis/job/context.h>
+#include <llis/job/coroutine_job.h>
+
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <tvm/runtime/registry.h>
@@ -160,16 +163,34 @@ class CUDALlisWrappedFunc {
     func_name_ = func_name;
     std::fill(fcache_.begin(), fcache_.end(), nullptr);
     thread_axis_cfg_.Init(num_void_args, thread_axis_tags);
+    num_void_args_ = num_void_args;
   }
   // invoke the function with void arguments
   void operator()(TVMArgs args, TVMRetValue* rv, void** void_args) const {
+    llis::job::CoroutineJob* job = dynamic_cast<llis::job::CoroutineJob*>(llis::job::Context::get_current_job());
+
+    llis::JobId job_id = job->get_id();
+
+    void_args[num_void_args_ + 1] = (void*)llis::job::Context::get_gpu2sched_channel();
+
+    ThreadWorkLoad wl = thread_axis_cfg_.Extract(args);
+
+    job->set_num_threads_per_block(wl.block_dim(0) * wl.block_dim(1) * wl.block_dim(2));
+    job->set_num_blocks(wl.grid_dim(0) * wl.grid_dim(1) * wl.grid_dim(2));
+    job->set_num_registers_per_thread(32); // TODO
+    job->set_smem_size_per_block(0); // TODO
+    //std::cout << wl.grid_dim(0) * wl.grid_dim(1) * wl.grid_dim(2) << std::endl;
+
+    job->yield();
+
+    void_args[num_void_args_] = (void*)&job_id;
+
     int device_id;
     CUDA_CALL(cudaGetDevice(&device_id));
     if (fcache_[device_id] == nullptr) {
       fcache_[device_id] = m_->GetFunc(device_id, func_name_);
     }
-    CUstream strm = static_cast<CUstream>(CUDAThreadEntry::ThreadLocal()->stream);
-    ThreadWorkLoad wl = thread_axis_cfg_.Extract(args);
+    CUstream strm = static_cast<CUstream>(job->get_cuda_stream());
     CUresult result = cuLaunchKernel(fcache_[device_id], wl.grid_dim(0), wl.grid_dim(1),
                                      wl.grid_dim(2), wl.block_dim(0), wl.block_dim(1),
                                      wl.block_dim(2), 0, strm, void_args, nullptr);
@@ -204,6 +225,8 @@ class CUDALlisWrappedFunc {
   mutable std::array<CUfunction, kMaxNumGPUs> fcache_;
   // thread axis configuration
   ThreadAxisConfig thread_axis_cfg_;
+  // num of args
+  int num_void_args_;
 };
 
 class CUDALlisPrepGlobalBarrier {
@@ -243,7 +266,7 @@ PackedFunc CUDALlisModuleNode::GetFunction(const std::string& name,
   const FunctionInfo& info = it->second;
   CUDALlisWrappedFunc f;
   f.Init(this, sptr_to_self, name, info.arg_types.size(), info.thread_axis_tags);
-  return PackFuncVoidAddr(f, info.arg_types);
+  return PackFuncVoidAddrExtraArgs(f, info.arg_types, 2);
 }
 
 Module CUDALlisModuleCreate(std::string data, std::string fmt,
