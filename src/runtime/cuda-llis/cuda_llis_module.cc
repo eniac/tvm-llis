@@ -173,22 +173,23 @@ class CUDALlisWrappedFunc {
 
     ThreadWorkLoad wl = thread_axis_cfg_.Extract(args);
 
+    int device_id;
+    CUDA_CALL(cudaGetDevice(&device_id));
+    if (fcache_[device_id] == nullptr) {
+      fcache_[device_id] = m_->GetFunc(device_id, func_name_);
+      cuFuncGetAttribute(&smem_size_cache_[device_id], CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES, fcache_[device_id]);
+      cuFuncGetAttribute(&nreg_cache_[device_id], CU_FUNC_ATTRIBUTE_NUM_REGS, fcache_[device_id]);
+    }
+
     job->set_num_threads_per_block(wl.block_dim(0) * wl.block_dim(1) * wl.block_dim(2));
     job->set_num_blocks(wl.grid_dim(0) * wl.grid_dim(1) * wl.grid_dim(2));
-    job->set_num_registers_per_thread(32); // TODO
-    job->set_smem_size_per_block(0); // TODO
-    //std::cout << wl.grid_dim(0) * wl.grid_dim(1) * wl.grid_dim(2) << std::endl;
+    job->set_smem_size_per_block(smem_size_cache_[device_id]);
+    job->set_num_registers_per_thread(nreg_cache_[device_id]);
 
     job->yield();
 
     llis::JobId job_id = job->get_id();
     void_args[num_void_args_] = (void*)&job_id;
-
-    int device_id;
-    CUDA_CALL(cudaGetDevice(&device_id));
-    if (fcache_[device_id] == nullptr) {
-      fcache_[device_id] = m_->GetFunc(device_id, func_name_);
-    }
     CUstream strm = static_cast<CUstream>(job->get_cuda_stream());
     CUresult result = cuLaunchKernel(fcache_[device_id], wl.grid_dim(0), wl.grid_dim(1),
                                      wl.grid_dim(2), wl.block_dim(0), wl.block_dim(1),
@@ -222,6 +223,8 @@ class CUDALlisWrappedFunc {
   // Device function cache per device.
   // mark as mutable, to enable lazy initialization
   mutable std::array<CUfunction, kMaxNumGPUs> fcache_;
+  mutable std::array<int, kMaxNumGPUs> smem_size_cache_;
+  mutable std::array<int, kMaxNumGPUs> nreg_cache_;
   // thread axis configuration
   ThreadAxisConfig thread_axis_cfg_;
   // num of args
