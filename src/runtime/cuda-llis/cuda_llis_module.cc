@@ -169,8 +169,6 @@ class CUDALlisWrappedFunc {
   void operator()(TVMArgs args, TVMRetValue* rv, void** void_args) const {
     llis::job::CoroutineJob* job = dynamic_cast<llis::job::CoroutineJob*>(llis::job::Context::get_current_job());
 
-    llis::JobId job_id = job->get_id();
-
     void_args[num_void_args_ + 1] = (void*)llis::job::Context::get_gpu2sched_channel();
 
     ThreadWorkLoad wl = thread_axis_cfg_.Extract(args);
@@ -183,6 +181,7 @@ class CUDALlisWrappedFunc {
 
     job->yield();
 
+    llis::JobId job_id = job->get_id();
     void_args[num_void_args_] = (void*)&job_id;
 
     int device_id;
