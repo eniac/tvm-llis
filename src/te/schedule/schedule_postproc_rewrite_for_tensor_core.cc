@@ -1083,7 +1083,7 @@ Stmt SchedulePostProcRewriteForTensorCore(Stmt stmt, Schedule schedule,
                                           Map<Tensor, Buffer> extern_buffer) {
   // Check if current lower target is CUDA
   auto target = tvm::Target::Current(true);
-  if (target.defined() && target->kind->name != "cuda") {
+  if (target.defined() && target->kind->name != "cuda" && target->kind->name != "cuda_llis") {
     return stmt;
   }
 
