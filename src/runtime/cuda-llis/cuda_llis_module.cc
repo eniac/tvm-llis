@@ -170,6 +170,9 @@ class CUDALlisWrappedFunc {
     llis::job::CoroutineJob* job = dynamic_cast<llis::job::CoroutineJob*>(llis::job::Context::get_current_job());
 
     void_args[num_void_args_ + 1] = (void*)llis::job::Context::get_gpu2sched_channel();
+#ifdef LLIS_MEASURE_BLOCK_TIME
+    void_args[num_void_args_ + 2] = (void*)llis::job::Context::get_gpu2sched_block_time_channel();
+#endif
 
     ThreadWorkLoad wl = thread_axis_cfg_.Extract(args);
 
@@ -268,7 +271,11 @@ PackedFunc CUDALlisModuleNode::GetFunction(const std::string& name,
   const FunctionInfo& info = it->second;
   CUDALlisWrappedFunc f;
   f.Init(this, sptr_to_self, name, info.arg_types.size(), info.thread_axis_tags);
+#ifdef LLIS_MEASURE_BLOCK_TIME
+  return PackFuncVoidAddrExtraArgs(f, info.arg_types, 3);
+#else
   return PackFuncVoidAddrExtraArgs(f, info.arg_types, 2);
+#endif
 }
 
 Module CUDALlisModuleCreate(std::string data, std::string fmt,

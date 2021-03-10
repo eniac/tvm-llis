@@ -421,6 +421,10 @@ if(USE_THREADS AND NOT BUILD_FOR_HEXAGON)
   endif(USE_LLIS)
 endif()
 
+if(LLIS_MEASURE_BLOCK_TIME)
+    add_definitions(-DLLIS_MEASURE_BLOCK_TIME)
+endif(LLIS_MEASURE_BLOCK_TIME)
+
 target_link_libraries(tvm PRIVATE ${TVM_LINKER_LIBS} ${TVM_RUNTIME_LINKER_LIBS})
 target_link_libraries(tvm_runtime PRIVATE ${TVM_RUNTIME_LINKER_LIBS})
 
