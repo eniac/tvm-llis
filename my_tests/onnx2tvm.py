@@ -6,10 +6,10 @@ import tvm.relay as relay
 from tvm.contrib.download import download_testdata
 import sys
 
-model_path = sys.argv[1]
-output_path = sys.argv[2]
+model_path = sys.argv[1] # path to the onnx model
+output_path = sys.argv[2] # path to output the tvm-compiled model
 target = sys.argv[3] # cuda or cuda_llis
-input_dims = tuple(int(x) for x in sys.argv[4:])
+input_dims = tuple(int(x) for x in sys.argv[4:]) # e.g., `1 3 224 224` for mobilenet
 
 target_host = "c"
 
