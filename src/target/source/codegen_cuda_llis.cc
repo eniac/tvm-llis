@@ -89,28 +89,15 @@ void CodeGenCUDALlis::AddFunction(const PrimFunc& f) {
 }
 
 void CodeGenCUDALlis::PrintExtraParams() {
-#ifdef LLIS_MEASURE_BLOCK_TIME
-  stream << ", llis::JobId __cuda_llis_job_id, llis::ipc::Gpu2SchedChannel __cuda_llis_gpu2sched_channel, llis::ipc::Gpu2SchedChannel __cuda_llis_gpu2sched_block_time_channel";
-#else
-  stream << ", llis::JobId __cuda_llis_job_id, llis::ipc::Gpu2SchedChannel __cuda_llis_gpu2sched_channel";
-#endif
+  stream << ", llis::JobId __cuda_llis_job_id, llis::job::FinishedBlockNotifier* __cuda_llis_notifier";
 }
 
 void CodeGenCUDALlis::PrintFinalReturn() {
-#ifdef LLIS_MEASURE_BLOCK_TIME
-  stream << "__cuda_llis_exit: llis::job::kernel_end(__cuda_llis_job_id, &__cuda_llis_gpu2sched_channel, &__cuda_llis_gpu2sched_block_time_channel, &start_end_time);\n";
-#else
-  stream << "__cuda_llis_exit: llis::job::kernel_end(__cuda_llis_job_id, &__cuda_llis_gpu2sched_channel);\n";
-#endif
+  stream << "__cuda_llis_exit: __cuda_llis_notifier->end(__cuda_llis_job_id);\n";
 }
 
 void CodeGenCUDALlis::PrintFuncStart() {
-#ifdef LLIS_MEASURE_BLOCK_TIME
-  stream << "llis::job::BlockStartEndTime start_end_time;\n"
-            "llis::job::kernel_start(__cuda_llis_job_id, &__cuda_llis_gpu2sched_channel, &start_end_time);\n";
-#else
-  stream << "llis::job::kernel_start(__cuda_llis_job_id, &__cuda_llis_gpu2sched_channel);\n";
-#endif
+  stream << "__cuda_llis_notifier->start(__cuda_llis_job_id);\n";
 }
 
 std::string CodeGenCUDALlis::Finish() {
@@ -120,7 +107,10 @@ std::string CodeGenCUDALlis::Finish() {
 #ifdef LLIS_MEASURE_BLOCK_TIME
   decl_stream << "#define LLIS_MEASURE_BLOCK_TIME\n";
 #endif
-  decl_stream << "#include <llis/job/instrument.h>\n";
+#ifdef LLIS_FINISHED_BLOCK_NOTIFICATION_AGG
+  decl_stream << "#define LLIS_FINISHED_BLOCK_NOTIFICATION_AGG\n";
+#endif
+  decl_stream << "#include <llis/job/finished_block_notifier.h>\n";
 
   return CodeGenCUDA::Finish();
 }

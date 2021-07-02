@@ -41,6 +41,7 @@
 #include "../pack_args.h"
 #include "../thread_storage_scope.h"
 #include "../cuda/cuda_common.h"
+#include "llis/job/finished_block_notifier.h"
 
 namespace tvm {
 namespace runtime {
@@ -169,11 +170,6 @@ class CUDALlisWrappedFunc {
   void operator()(TVMArgs args, TVMRetValue* rv, void** void_args) const {
     llis::job::CoroutineJob* job = dynamic_cast<llis::job::CoroutineJob*>(llis::job::Context::get_current_job());
 
-    void_args[num_void_args_ + 1] = (void*)llis::job::Context::get_gpu2sched_channel();
-#ifdef LLIS_MEASURE_BLOCK_TIME
-    void_args[num_void_args_ + 2] = (void*)llis::job::Context::get_gpu2sched_block_time_channel();
-#endif
-
     ThreadWorkLoad wl = thread_axis_cfg_.Extract(args);
 
     int device_id;
@@ -192,7 +188,9 @@ class CUDALlisWrappedFunc {
     job->yield();
 
     llis::JobId job_id = job->get_id();
+    llis::job::FinishedBlockNotifier* notifier = job->get_finished_block_notifier();
     void_args[num_void_args_] = (void*)&job_id;
+    void_args[num_void_args_ + 1] = (void*)&notifier;
     CUstream strm = static_cast<CUstream>(job->get_cuda_stream());
     CUresult result = cuLaunchKernel(fcache_[device_id], wl.grid_dim(0), wl.grid_dim(1),
                                      wl.grid_dim(2), wl.block_dim(0), wl.block_dim(1),
@@ -271,11 +269,7 @@ PackedFunc CUDALlisModuleNode::GetFunction(const std::string& name,
   const FunctionInfo& info = it->second;
   CUDALlisWrappedFunc f;
   f.Init(this, sptr_to_self, name, info.arg_types.size(), info.thread_axis_tags);
-#ifdef LLIS_MEASURE_BLOCK_TIME
-  return PackFuncVoidAddrExtraArgs(f, info.arg_types, 3);
-#else
   return PackFuncVoidAddrExtraArgs(f, info.arg_types, 2);
-#endif
 }
 
 Module CUDALlisModuleCreate(std::string data, std::string fmt,
